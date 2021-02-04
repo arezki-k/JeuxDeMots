@@ -1,0 +1,240 @@
+<?php
+
+namespace App\Controller;
+
+
+use Symfony\Contracts\Cache\ItemInterface;
+use Symfony\Component\Security\Core\Security;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+
+
+use App\Entity\User;
+
+
+use App\Service\JDMApi;
+use function App\Service\convertToAnsi;
+use function App\Service\getEntriesFromFile;
+
+
+
+class JeuxDeMotsController extends AbstractController
+{
+    private $cache;
+
+    private $cacheDuraction;
+    private $username;
+
+    public function __construct(Security $security)
+    {
+        $this->cache = new FilesystemAdapter();
+        $this->cacheDuraction = 604800; //Une semaine 604800
+        // initialize var username with username if user connected, else : empty string
+        ($security->getUser())? $this->username = $security->getUser()->getUsername():$this->username = "";
+    }
+
+    /**
+     * Return true if the User preference is alphabetical order.
+     */
+    private function isAlphaOrderPreferred(){
+        $entityManager = $this->getDoctrine()->getManager();
+        $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $this->username]);
+        if($user){
+            // get user preferences.
+            $preferences = $entityManager->getRepository(UserPreferences::class)->findOneBy(['user_id' => $user]);
+            //var_dump($preferences->isAlphaSelected());
+            return $preferences->isAlphaSelected();
+        }
+        return true;
+    }
+
+    /**
+     * Returns user prefs for displays or 10 if not precised.
+     */
+    private function getCpt(){
+        $entityManager = $this->getDoctrine()->getManager();
+        $user = $entityManager->getRepository(User::class)->findOneBy(['email' => $this->username]);
+        if($user){
+            // get user preferences.
+            $preferences = $entityManager->getRepository(UserPreferences::class)->findOneBy( ['user_id' => $user]);
+            return $preferences->getMaxDisplay();
+        }
+        return 10;
+    }
+
+    private function getPage($term){
+        $nomCache = 'cache-page-exacte-'.convertToAnsi($term);
+        $value = $this->cache->get($nomCache, function (ItemInterface $item) use ($term) {
+            $item->expiresAfter($this->cacheDuraction);
+            $request = new JDMApi();
+            $page = $request->getDataFor($term, $this->isAlphaOrderPreferred());
+            return $page;
+        });
+
+        return $value;
+    }
+
+    /**
+     * @Route("/search/{term}", name="search", requirements={"term"="[^/]*"})
+     */
+    public function search(string $term)
+    {
+
+        $value = $this->getPage($term);
+
+        if(is_null($value)){
+            return $this->render('jeux_de_mots/null.html.twig', [
+                'title' => 'Résultat pour ' . $term,
+                'term' => $term,
+            ]);
+        }else{
+            return $this->render('jeux_de_mots/index.html.twig', [
+                'content' => $value,
+                'term' => $term,
+            ]);
+        }
+    }
+
+    /**
+     * @Route("/search-approx/{term}", name="search-approx", requirements={"term"="[^/]*"})
+     */
+    public function searchApprox(string $term)
+    {
+        $nomCache = 'cache-page-approx-'.convertToAnsi($term);
+        $value = $this->cache->get($nomCache, function (ItemInterface $item) use ($term) {
+            $item->expiresAfter($this->cacheDuraction);
+            $request = new JDMApi();
+            $page = $request->getApproxFor($term, $this->isAlphaOrderPreferred());
+            return $page;
+        });
+
+        if(is_null($value)){
+            return $this->render('jeux_de_mots/null.html.twig', [
+                'title' => 'Résultat pour ' . $term,
+                'term' => $term,
+            ]);
+        }else{
+            return $this->render('jeux_de_mots/indexApprox.html.twig', [
+                'title' => 'Résultat pour ' . $term,
+                'content' => $value,
+                'term' => $term,
+            ]);
+        }
+    }
+
+    /**
+     * @Route("/search-relations/{relation}/{term}", name="search-relations", requirements={"term"="[^/]*", "relation"="[0-9]+[0-9]*"})
+     */
+    public function searchRelations(string $term, string $relation)
+    {
+        $nomCache = 'cache-page-relation-'.convertToAnsi($term).'-'.convertToAnsi($relation);
+        $value = $this->cache->get($nomCache, function (ItemInterface $item) use ($term, $relation) {
+            $item->expiresAfter($this->cacheDuraction);
+            $request = new JDMRequest();
+            $page = $request->getContentRelationIn($relation, $term, $this->isAlphaOrderPreferred());
+            return $page;
+        });
+
+        if(is_null($value)){
+            return $this->render('jeux_de_mots/null.html.twig', [
+                'title' => 'Résultat pour ' . $term,
+                'term' => $term,
+            ]);
+        }else{
+            return $this->render('jeux_de_mots/indexRelation.html.twig', [
+                'title' => 'Résultat pour ' . $term,
+                'term' => $term, /*TODO recup nom relation*/
+                'relation' => $relation,
+                'content' => $value,
+            ]);
+        }
+
+    }
+
+    /**
+     * @Route("/search-entries-for-term-by-relation/{relation}/{term}/{iddiv}/{nbClic}", name="search-entries-for-term-by-relation", requirements={"term"="[^/]*","relation"="[^/]*", "iddiv"="[^/]*", "nbClic"="[0-9]*"})
+     */
+    public function searchEntriesForTermByRelation(string $relation, string $term, string $iddiv, string $nbClic)
+    {
+        $nomCache = 'cache-page-exacte-entries-relation-'.convertToAnsi($term)."-".$relation;
+        $value = $this->cache->get($nomCache, function (ItemInterface $item) use ($relation, $term) {
+            $item->expiresAfter($this->cacheDuraction);
+            $request = new JDMRequest();
+            $page = $request->getDataFor($term, $this->isAlphaOrderPreferred());
+            return $page->relations["id_".convertToAnsi($relation)]["entries"];
+        });
+        $nbClic = intval($nbClic);
+        return $this->render('jeux_de_mots/entriesDisplay.html.twig', [
+            'entries' => $value,
+            'cpt' => $this->getCpt()*$nbClic,
+            'nbClic' => $nbClic,
+            'term' => $term,
+            'iddiv' => $iddiv,
+            'relation' =>$relation
+        ]);
+    }
+
+    /**
+     * @Route("/search-raffinement-list/{term}", name="search-raffinement-list", requirements={"term"="[^/]*"})
+     */
+    public function searchRaffinementList(string $term)
+    {
+        $nomCache = 'cache-raffinement-semantique-liste-'.convertToAnsi($term);
+
+        $resultRaffine = $this->cache->get($nomCache, function (ItemInterface $item) use ($term) {
+            $item->expiresAfter($this->cacheDuraction);
+            $value = $this->getPage($term);
+            if(isset($value->relations["id_".convertToAnsi("raffinement sémantique")])){
+                return $value->relations["id_".convertToAnsi("raffinement sémantique")];
+            }
+            return null;
+        });
+        $result = null;
+        if(!is_null($resultRaffine)){
+            $result = $resultRaffine;
+        }
+        $result = json_encode($result);
+
+        return new JsonResponse($result);
+    }
+
+
+    /**
+     * @Route("/search-first-definition/{term}", name="search-first-definition", requirements={"term"="[^/]*"})
+     */
+    public function searchFirstDefinition(string $term)
+    {
+        $value = $this->getPage($term);
+        $result = json_encode($value->defs);
+        return new JsonResponse($result);
+    }
+
+    /**
+     * @Route("/search-auto-complet-letter/{letter}", name="search-auto-complet-letter", requirements={"letter"="[^/]*"})
+     */
+    public function searchAutoCompletLetter(string $letter)
+    {
+        $result = json_encode(null);
+        $fileName = "./autocomplete/symbole_".$letter.".json";
+        if(file_exists("$fileName")){
+            $result = file_get_contents($fileName);
+        }
+        return new JsonResponse($result);
+    }
+
+    //utiliser pour créer les fichier json de l'autocomplettion
+    /**
+     * @Route("/parsing-entries-from-file", name="parsing-entries-from-file")
+     */
+    public function parseEntiresFromFile()
+    {
+        $value = getEntriesFromFile();
+        return $this->render('search/displayDebug.html.twig', [
+            'value' => $value,
+        ]);
+    }
+
+}

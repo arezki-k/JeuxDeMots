@@ -3,6 +3,7 @@
 namespace App\Controller;
 
 use App\Entity\User;
+use App\Form\InscriptionFormType;
 use Doctrine\ORM\EntityManagerInterface;
 use App\Security\JeuxDeMotsAuthenticator;
 use Symfony\Component\HttpFoundation\Request;

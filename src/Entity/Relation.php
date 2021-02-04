@@ -28,14 +28,14 @@ class Relation
     private $name;
 
     /**
-     * @ORM\Column(type="string", length=255, nullable=true)
+     * @ORM\Column(type="string", length=255)
      */
     private $description;
 
     /**
-     * @ORM\Column(type="integer", nullable=true)
+     * @ORM\Column(type="integer")
      */
-    private $wight;
+    private $weight;
 
     public function getId(): ?int
     {
@@ -71,21 +71,21 @@ class Relation
         return $this->description;
     }
 
-    public function setDescription(?string $description): self
+    public function setDescription(string $description): self
     {
         $this->description = $description;
 
         return $this;
     }
 
-    public function getWight(): ?int
+    public function getWeight(): ?int
     {
-        return $this->wight;
+        return $this->weight;
     }
 
-    public function setWight(?int $wight): self
+    public function setWeight(int $weight): self
     {
-        $this->wight = $wight;
+        $this->weight = $weight;
 
         return $this;
     }

@@ -2,13 +2,16 @@
 
 namespace App\Entity;
 
-use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
+use App\Repository\UserRepository;
+use Symfony\Component\Validator\Constraints as Assert;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Bridge\Doctrine\Validator\Constraints\UniqueEntity;
 
 /**
  * @ORM\Entity(repositoryClass=UserRepository::class)
  * @ORM\Table(name="`user`")
+ * @UniqueEntity(fields = {"email"},message ="User already exists, please sign in or use another email")
  */
 class User implements UserInterface
 {
@@ -21,6 +24,8 @@ class User implements UserInterface
 
     /**
      * @ORM\Column(type="string", length=180, unique=true)
+     * @Assert\Email(
+     * message="entry not valid, please enter a correct email")
      */
     private $email;
 
@@ -31,9 +36,17 @@ class User implements UserInterface
 
     /**
      * @var string The hashed password
+     * @Assert\AtLeastOneOf({
+     *     @Assert\Regex("/#/"),
+     *     @Assert\Length(min=8)
+     * })
      * @ORM\Column(type="string")
      */
     private $password;
+    /**
+     * @Assert\EqualTo(propertyPath="password", message="Les deux mots de passe doivent etre similaires")
+     */
+    private $passwordConfirmation;
 
     public function getId(): ?int
     {
@@ -96,6 +109,18 @@ class User implements UserInterface
         return $this;
     }
 
+    public function getPasswordConfirmation(): string
+    {
+        return (string) $this->passwordConfirmation;
+    }
+
+    public function setPasswordConfirmation(string $password): self
+    {
+        $this->passwordConfirmation = $password;
+
+        return $this;
+    }
+
     /**
      * @see UserInterface
      */
@@ -111,5 +136,9 @@ class User implements UserInterface
     {
         // If you store any temporary, sensitive data on the user, clear it here
         // $this->plainPassword = null;
+    }
+    public function __toString(): string
+    {
+        return $this->email;
     }
 }

@@ -1,0 +1,65 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}JDM{% endblock %}
+
+
+{% block body %}
+
+    <style>
+        .example-wrapper { margin: 1em auto; max-width: 800px; width: 95%; font: 18px/1.5 sans-serif; }
+        .example-wrapper code { background: #F5F5F5; padding: 2px 6px; }
+    </style>
+
+    <div data-magellan-target="main-content-section">
+
+        <div class="text-center content">
+            <div class="bigBanner large primary">
+                <h1>{{ title }}</h1>
+                <p>Bienvenue sur le navigateur pour Jeux de Mots. Ici vous pouvez naviguer en toute simplicité dans le réseau lexical du <a href="http://www.jeuxdemots.org/jdm-about.php">projet Jeux de Mots</a>.</p>
+            </div>
+            <section>
+                <h2>Recherche</h2>
+                <div class="row">
+                    <div class="ui-widget">
+                        <input id="term" class="column large-3" type="text" placeholder="Je recherche le terme..." value="">
+                    </div>
+                        <select id="search-mode" class="column large-3" onchange="setExplanationText()">
+                            <option value="" disabled>--Choisir un mode de recherche--</option>
+                            <option value="exacte">Exactement</option>
+                            <option value="approximative">Approximativement</option>
+                            <option value="relation">Par relations</option>
+                            
+                        </select>
+                        <select id="relations" class="column large-3 default-hiden" >
+                            <option value="" disabled>--Choisir une relation--</option>
+                            {% for relation in relations %}
+                                <option value="{{ relation.idRelation}}_{{ relation.name }}">{{ relation.name }}</option>
+                            {% endfor %}
+                        </select>
+                        <input type="button" class="button column large-3" id="search-submit-button" onclick="searchOnJDM()"  value="Rechercher">
+                    <p id="mode-explanation" class="column large-3">Choisissez le mode de recherche.</p>
+                </div><!-- row -->
+            </section>
+
+
+
+            <section id="section_raff" class="default-hiden example-wrapper">
+                <h2 id="titre_resultat"></h2>
+                <table>
+                    <thead>
+                    <tr>
+                        <th>N°</th>
+                        <th>Définition par raffinement</th>
+                    </tr>
+                    </thead>
+                    <tbody id="result_raff">
+                        <tr>
+                            <td colspan="2">Recherche en cours ! <img src='/assets/loading.gif' alt='recherche en cours'/></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </section>
+        </div><!-- content -->
+    </div>
+
+{% endblock %}
