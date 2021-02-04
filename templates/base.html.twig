@@ -3,11 +3,19 @@
     <head>
         <meta charset="UTF-8">
         <title>{% block title %}Welcome!{% endblock %}</title>
-        {% block stylesheets %}{% endblock %}
-
-        {% block javascripts %}{% endblock %}
+        {% block stylesheets %}
+            <link rel="stylesheet" href="https://bootswatch.com/4/darkly/bootstrap.min.css">
+            <link rel="stylesheet" href="{{ asset('/css/main.css') }}">
+            <link rel="stylesheet" href="{{ asset('/css/jquery-ui.min.css') }}">
+            <link rel='icon' href='/assets/favicon.ico' type='image/x-icon'/>
+        {% endblock %}
     </head>
     <body>
+        {% block header %}{% include 'headers/header.html.twig' %}{% endblock %}
         {% block body %}{% endblock %}
+        {% block footer %}{% include 'footers/footer.html.twig' %}{% endblock %}
+        {% block javascripts %}{% endblock %}
+    
     </body>
+
 </html>
