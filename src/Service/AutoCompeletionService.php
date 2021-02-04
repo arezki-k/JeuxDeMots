@@ -2,6 +2,10 @@
 
 namespace App\Service;
 
+
+class AutoCompeletionService{
+    
+}
 function getEntriesFromFile(){
     ini_set('memory_limit','2048M');
     set_time_limit ( 600 );
